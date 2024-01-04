@@ -31,8 +31,8 @@ class Market():
         self.data = self.data.drop(['<DATE>', '<TIME>', '<VOL>', '<SPREAD>' ], axis=1)
         self.data = self.data[['<DATETIME>'] + [col for col in self.data.columns if col != '<DATETIME>']]
         
-        self.data['SMA'] = self.data['Price'].rolling(window=ma).mean()
-        self.data['EMA'] = self.data['Price'].ewm(span=ema, adjust=False).mean()
+        self.data['SMA'] = self.data['<HIGH>'].rolling(window=ma).mean()
+        self.data['EMA'] = self.data['<HIGH>'].ewm(span=ema, adjust=False).mean()
         
         self.chart : list[Candle] = []
         self.n_candles = self.data.shape[0]
@@ -41,8 +41,8 @@ class Market():
         self.tf = ...
         
         for k in range(self.n_candles):
-            data = self.data.loc[k]
-            candle = Candle(data["Date"], self.tf, data["High"], data["Low"], data["Open"], data["Close"])
+            c = self.data.loc[k]
+            candle = Candle(c["<DATETIME>"], self.tf, c["<HIGH>"], c["<LOW>"], c["<OPEN>"], c["<CLOSE>"])
             self.chart.append(candle)
             
         uptrends =   ma*[np.nan] + [ (sum([ int(self.chart[i].isBullish()) for i in range(k-ma, k) ]) > int(ma*0.75)) for k in range(ma, self.n_candles) ]
@@ -59,21 +59,18 @@ class Market():
             if self.chart[k].low < self.chart[k-1].low and self.chart[k].low < self.chart[k+1].low:
                 self.swi["low"].append(k)
             
-    def getFVGs(self, return_times = False):
-        """
-        Returns the ??? of the market's FVGs
-        """
-        
-        fvg = {"bull":[], "bear": []}
+        self.fvg = {"bull":[], "bear": []}
+        self.fvg_t = {"bull":[], "bear": []}
         
         for k in range(1,self.n_candles-1):
             if self.chart[k-1].high < self.chart[k+1].low:
-                fvg["bull"].append((self.chart[k].timestamp if return_times else k))
+                self.fvg["bull"].append(k)
+                self.fvg_t["bull"].append(self.chart[k].timestamp)
                 
             if self.chart[k-1].low > self.chart[k+1].high:
-                fvg["bear"].append((self.chart[k].timestamp if return_times else k))
-        
-        return(fvg)
+                self.fvg["bear"].append(k)
+                self.fvg_t["bear"].append(self.chart[k].timestamp)
+
     
     def getMSSs(self, return_times = False):
         
@@ -88,7 +85,7 @@ class Market():
             if self.data["Downtrend"][k] and self.chart[k+1].isBullish() and self.chart[k+2].isBullish() and self.chart[k].close < lastSwingLow.low:
                 mss["bull"].append((self.chart[k].timestamp if return_times else k))
                 
-        
+        return(mss)
 
     def get_OBs(self, dir):
         OBs = {"bull":[], "bear": []}
@@ -107,6 +104,10 @@ class Market():
         end = end if end else self.end_date
         
         df = self.data[ (self.data["<DATETIME>"] > start) & (self.data["<DATETIME>"] < end) ]
+        df = df.reset_index()
+        
+        n = df.shape[0]
+        print(n)
 
         fig = go.Figure(data=go.Candlestick(x=df['<DATETIME>'],
                             open=df['<OPEN>'],
@@ -114,13 +115,22 @@ class Market():
                             low=df['<LOW>'],
                             close=df['<CLOSE>']))
         
-        fig.add
-        
         if FVG:
-            fig.add_scatter(...)
+            for k in self.fvg["bull"]:
+                
+                if k>=n:
+                    break
+                
+                fig.add_scatter(x=[df['<DATETIME>'][k-1], df['<DATETIME>'][k-1], df['<DATETIME>'][min(k+10, n-1)], df['<DATETIME>'][min(k+10, n-1)], df['<DATETIME>'][k-1]], 
+                                y=[df['<HIGH>'][k-1], df['<LOW>'][k+1], df['<LOW>'][k+1], df['<HIGH>'][k-1], df['<HIGH>'][k-1]],
+                                fill="toself",
+                            )
+        
+        
         
         fig.show()
     
 
 if __name__ == "__main__":
     m = Market("CandleMagic\\data\\EURUSD_M1_231201_231215.csv")
+    m.plot(FVG = True)
