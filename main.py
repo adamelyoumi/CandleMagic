@@ -111,7 +111,7 @@ class Market():
     
         fig.show()
     
-    def plot(self, start = None, end = None, FVG = False, MSS = False, EMA = False):
+    def plot(self, start = None, end = None, BFVG = False, bFVG = False, MSS = False, EMA = False):
         
         start = start if start else self.start_date
         end = end if end else self.end_date
@@ -125,13 +125,31 @@ class Market():
                             low=df['<LOW>'],
                             close=df['<CLOSE>']))
         
-        if FVG:
+        if BFVG:
             for k in self.fvg["bull"]:
                 if k in df.index:
                     limit = min(k+20, df.index[-1])
                     fig.add_scatter(x=[df['<DATETIME>'][k-1], df['<DATETIME>'][k-1], df['<DATETIME>'][limit], df['<DATETIME>'][limit], df['<DATETIME>'][k-1]], 
                                     y=[df['<HIGH>'][k-1], df['<LOW>'][k+1], df['<LOW>'][k+1], df['<HIGH>'][k-1], df['<HIGH>'][k-1]],
-                                    fill="toself")
+                                    fill="toself",
+                                    fillcolor="green",
+                                    line=dict(color="green"),
+                                    opacity=0.4,
+                                    showlegend=False,
+                                    )
+        
+        if bFVG:
+            for k in self.fvg["bear"]:
+                if k in df.index:
+                    limit = min(k+20, df.index[-1])
+                    fig.add_scatter(x=[df['<DATETIME>'][k-1], df['<DATETIME>'][k-1], df['<DATETIME>'][limit], df['<DATETIME>'][limit], df['<DATETIME>'][k-1]], 
+                                    y=[df['<HIGH>'][k-1], df['<LOW>'][k+1], df['<LOW>'][k+1], df['<HIGH>'][k-1], df['<HIGH>'][k-1]],
+                                    fill="toself",
+                                    fillcolor="red",
+                                    line=dict(color="red"),
+                                    opacity=0.4,
+                                    showlegend=False,
+                                    )
         
         # fig.update_layout(yaxis=dict(range=[y_min, y_max])) ...
         
