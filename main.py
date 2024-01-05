@@ -1,6 +1,6 @@
 import pandas as pd
 from datetime import datetime
-import plotly.graph_objects as go
+import plotly.graph_objects as ly
 import matplotlib.pyplot as plt
 import numpy as np
 import bisect
@@ -71,7 +71,6 @@ class Market():
                 self.fvg["bear"].append(k)
                 self.fvg_t["bear"].append(self.chart[k].timestamp)
 
-    
     def getMSSs(self, return_times = False):
         
         mss = {"bull":[], "bear": []}
@@ -98,18 +97,29 @@ class Market():
         
         return(OBs)
     
+    def plotLine(self, start = None, end = None):
+        
+        start = start if start else self.start_date
+        end = end if end else self.end_date
+        
+        df = self.data[ (self.data["<DATETIME>"] > start) & (self.data["<DATETIME>"] < end) ]
+        n = df.shape[0]
+
+        fig = ly.Figure(data=ly.Scatter(x=df['<DATETIME>'],
+                            y=df['<HIGH>'])
+                        )
+    
+        fig.show()
+    
     def plot(self, start = None, end = None, FVG = False, MSS = False, EMA = False):
         
         start = start if start else self.start_date
         end = end if end else self.end_date
         
         df = self.data[ (self.data["<DATETIME>"] > start) & (self.data["<DATETIME>"] < end) ]
-        df = df.reset_index()
-        
         n = df.shape[0]
-        print(n)
 
-        fig = go.Figure(data=go.Candlestick(x=df['<DATETIME>'],
+        fig = ly.Figure(data=ly.Candlestick(x=df['<DATETIME>'],
                             open=df['<OPEN>'],
                             high=df['<HIGH>'],
                             low=df['<LOW>'],
@@ -117,20 +127,21 @@ class Market():
         
         if FVG:
             for k in self.fvg["bull"]:
-                
-                if k>=n:
-                    break
-                
-                fig.add_scatter(x=[df['<DATETIME>'][k-1], df['<DATETIME>'][k-1], df['<DATETIME>'][min(k+10, n-1)], df['<DATETIME>'][min(k+10, n-1)], df['<DATETIME>'][k-1]], 
-                                y=[df['<HIGH>'][k-1], df['<LOW>'][k+1], df['<LOW>'][k+1], df['<HIGH>'][k-1], df['<HIGH>'][k-1]],
-                                fill="toself",
-                            )
+                if k in df.index:
+                    limit = min(k+20, df.index[-1])
+                    fig.add_scatter(x=[df['<DATETIME>'][k-1], df['<DATETIME>'][k-1], df['<DATETIME>'][limit], df['<DATETIME>'][limit], df['<DATETIME>'][k-1]], 
+                                    y=[df['<HIGH>'][k-1], df['<LOW>'][k+1], df['<LOW>'][k+1], df['<HIGH>'][k-1], df['<HIGH>'][k-1]],
+                                    fill="toself")
         
-        
+        # fig.update_layout(yaxis=dict(range=[y_min, y_max])) ...
         
         fig.show()
     
 
 if __name__ == "__main__":
     m = Market("CandleMagic\\data\\EURUSD_M1_231201_231215.csv")
-    m.plot(FVG = True)
+    
+    m.plotLine(start=datetime(2023, 12, 1, 1, 0, 0), end=datetime(2023, 12, 10, 0, 0, 0))
+    m.plot(start=datetime(2023, 12, 1, 9, 0, 0), end=datetime(2023, 12, 1, 12, 0, 0), FVG = True)
+    
+# check https://huggingface.co/dslim/bert-base-NER
