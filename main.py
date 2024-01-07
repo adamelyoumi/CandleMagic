@@ -25,7 +25,11 @@ class Candle():
         
 class Market():
     def __init__(self, file, ma=10, ema=10, pair = "") -> None:
-        self.pair = pair
+        
+        self.ma = ma
+        self.ema = ema
+        
+        self.pair = file.split("\\")[-1].split("/")[-1].split("_")[0]
         
         self.data = pd.read_csv(file, sep="\t")
         
@@ -33,9 +37,9 @@ class Market():
         self.data = self.data.drop(['<DATE>', '<TIME>', '<VOL>', '<SPREAD>' ], axis=1)
         
         self.data = self.data.rename({"<CLOSE>": "close",
-           "<OPEN>": "open",
-           "<HIGH>": "high",
-           "<LOW>": "low"
+                                    "<OPEN>": "open",
+                                    "<HIGH>": "high",
+                                    "<LOW>": "low"
            }, axis = 1)
         
         self.data = self.data[['<DATETIME>'] + [col for col in self.data.columns if col != '<DATETIME>']]
@@ -54,11 +58,11 @@ class Market():
             candle = Candle(c["<DATETIME>"], self.tf, c["high"], c["low"], c["open"], c["close"])
             self.chart.append(candle)
             
-        uptrends =   ma*[np.nan] + [ (sum([ int(self.chart[i].isBullish()) for i in range(k-ma, k) ]) > int(ma*0.75)) for k in range(ma, self.n_candles) ]
-        downtrends = ma*[np.nan] + [ (sum([ int(self.chart[i].isBearish()) for i in range(k-ma, k) ]) > int(ma*0.75)) for k in range(ma, self.n_candles) ]
+        self.uptrends =   ma*[np.nan] + [ sum([ int(self.chart[i].isBullish()) for i in range(k-ma, k) ]) > int(ma*0.75) for k in range(ma, self.n_candles) ]
+        self.downtrends = ma*[np.nan] + [ sum([ int(self.chart[i].isBearish()) for i in range(k-ma, k) ]) > int(ma*0.75) for k in range(ma, self.n_candles) ]
         
-        self.data["Uptrend"] = pd.Series(uptrends)
-        self.data["Downtrend"] = pd.Series(downtrends)
+        self.data["Uptrend"] = pd.Series(self.uptrends)
+        self.data["Downtrend"] = pd.Series(self.downtrends)
         
         self.swi = {"high":[], "low": []}
         
@@ -81,7 +85,7 @@ class Market():
                 self.fvg_t["bear"].append(self.chart[k].timestamp)
                 
         self.trends = {"bull":[], "bear": []}
-        
+        """
         trend_type = None
         trend_start = 0
         window = 5
@@ -138,10 +142,7 @@ class Market():
         # Check for the last trend
         if trend_type:
             self.trends[trend_type].append((trend_start, self.n_candles - 1))
-
-
-        
-            
+        """
 
     def getMSSs(self, return_times = False):
         
@@ -197,6 +198,14 @@ class Market():
                             low=df['low'],
                             close=df['close']),
                         )
+        
+        if trends:
+            for t in self.data["Uptrend"]:
+                if t[0] in df.index and t[1] in df.index:
+                    fig.add_scatter(x=[df['<DATETIME>'][t[0]], df['<DATETIME>'][t[1]]],
+                                    y=[df['open'][t[0]], df['close'][t[1]]],
+                                    opacity=0.7,
+                                    showlegend=False)
         
         if trends:
             for t in self.trends["bull"] + self.trends["bear"]:
