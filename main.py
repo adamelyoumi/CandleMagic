@@ -1,5 +1,5 @@
 import pandas as pd
-from datetime import datetime
+import datetime
 import plotly.graph_objects as ly
 import matplotlib.pyplot as plt
 import numpy as np
@@ -24,7 +24,15 @@ class Candle():
         return(abs(self.open-self.close))
         
 class Market():
-    def __init__(self, file, ma=10, ema=10, pair = "") -> None:
+    def __init__(self, file, ma=10, ema=10, pair = "", mode = "") -> None:
+        
+        """
+            Give the history over many days, will be used to define liquidity levels
+            mode: if set to "backtest", will apply ICT to the days starting 14 days after the first day of the file provided
+            
+        """
+        
+        self.mode = mode
         
         self.ma = ma
         self.ema = ema
@@ -73,18 +81,25 @@ class Market():
                 self.swi["low"].append(k)
             
         self.fvg = {"bull":[], "bear": []}
-        self.fvg_t = {"bull":[], "bear": []}
         
         for k in range(1,self.n_candles-1):
             if self.chart[k-1].high < self.chart[k+1].low:
                 self.fvg["bull"].append(k)
-                self.fvg_t["bull"].append(self.chart[k].timestamp)
                 
             if self.chart[k-1].low > self.chart[k+1].high:
                 self.fvg["bear"].append(k)
-                self.fvg_t["bear"].append(self.chart[k].timestamp)
                 
-        self.trends = {"bull":[], "bear": []}
+        # self.trends = {"bull":[], "bear": []}
+        
+        
+        self.OBs = {"bull":[], "bear": []}
+        
+        for k in range(self.n_candles-3):
+            if self.chart[k].isBullish() and self.chart[k+1].isBearish() and self.chart[k+2].isBearish() and self.chart[k+3].isBearish():
+                self.OBs["bull"].append(k)
+            if self.chart[k].isBearish() and self.chart[k+1].isBullish() and self.chart[k+2].isBullish() and self.chart[k+3].isBullish():
+                self.OBs["bear"].append(k)
+        
         """
         trend_type = None
         trend_start = 0
@@ -154,21 +169,27 @@ class Market():
             
             if self.data["Uptrend"][k] and self.chart[k+1].isBearish() and self.chart[k+2].isBearish() and self.chart[k].close > lastSwingHigh.high:
                 mss["bear"].append((self.chart[k].timestamp if return_times else k))
+                
             if self.data["Downtrend"][k] and self.chart[k+1].isBullish() and self.chart[k+2].isBullish() and self.chart[k].close < lastSwingLow.low:
                 mss["bull"].append((self.chart[k].timestamp if return_times else k))
                 
         return(mss)
 
-    def get_OBs(self, dir):
-        OBs = {"bull":[], "bear": []}
-        
-        for k in range(1,self.n_candles-1):
-            if self.chart[k-1].high < self.chart[k+1].low and (dir is None or dir):
-                OBs["bull"].append(self.chart[k].timestamp)
-            if self.chart[k-1].low > self.chart[k+1].high and (dir is None or not dir):
-                OBs["bear"].append(self.chart[k].timestamp)
-        
-        return(OBs)
+    
+    def runBacktest(self, histDays=10):
+        highs = []
+        lows = []
+        day = self.chart[0].timestamp.date()
+        for k in range(histDays):
+            df = self.data[self.data["<TIMESTAMP>"] == day]
+            highs.append(max(df["close"]))
+            lows.append(min(df["close"]))
+            
+            if day.weekday() == 4: # Friday
+                day += datetime.timedelta(days = 3)
+            else:
+                day += datetime.timedelta(days = 1)
+                
     
     def plotLine(self, start = None, end = None):
         
@@ -199,14 +220,28 @@ class Market():
                             close=df['close']),
                         )
         
+        mini = min(df["low"])
+        # maxi = max(self.data["high"])
+        
         if trends:
-            for t in self.data["Uptrend"]:
-                if t[0] in df.index and t[1] in df.index:
-                    fig.add_scatter(x=[df['<DATETIME>'][t[0]], df['<DATETIME>'][t[1]]],
-                                    y=[df['open'][t[0]], df['close'][t[1]]],
-                                    opacity=0.7,
+            for i in df.index:
+                if self.data["Uptrend"][i]:
+                    fig.add_scatter(x=[df['<DATETIME>'][i]],
+                                    y=[mini],
+                                    opacity=1,
+                                    fillcolor="green",
+                                    line=dict(color="green"),
+                                    showlegend=False)
+                    
+                if self.data["Downtrend"][i]:
+                    fig.add_scatter(x=[df['<DATETIME>'][i]],
+                                    y=[mini],
+                                    opacity=1,
+                                    fillcolor="red",
+                                    line=dict(color="red"),
                                     showlegend=False)
         
+        """
         if trends:
             for t in self.trends["bull"] + self.trends["bear"]:
                 if t[0] in df.index and t[1] in df.index:
@@ -214,7 +249,8 @@ class Market():
                                     y=[df['open'][t[0]], df['close'][t[1]]],
                                     opacity=0.7,
                                     showlegend=False)
-            
+        """
+        
         if BFVG:
             for k in self.fvg["bull"]:
                 if k in df.index:
@@ -252,6 +288,6 @@ if __name__ == "__main__":
     m = Market("CandleMagic\\data\\EURUSD_M1_231201_231215.csv")
     
     # m.plotLine(start=datetime(2023, 12, 1, 1, 0, 0), end=datetime(2023, 12, 10, 0, 0, 0))
-    m.plot(start=datetime(2023, 12, 1, 5, 0, 0), end=datetime(2023, 12, 1, 8, 0, 0), bFVG = False, trends=True)
+    m.plot(start=datetime.datetime(2023, 12, 5, 5, 0, 0), end=datetime.datetime(2023, 12, 6, 8, 0, 0), bFVG = False, trends=True)
     
 # check https://huggingface.co/dslim/bert-base-NER
