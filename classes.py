@@ -41,7 +41,9 @@ class Market():
         
         self.data = pd.read_csv(file, sep="\t")
         
-        self.data['<DATETIME>'] = pd.to_datetime(self.data['<DATE>'] + ' ' + self.data['<TIME>'], format='%Y.%m.%d %H:%M:%S')
+        self.data['ts'] = pd.to_datetime(self.data['<DATE>'] + ' ' + self.data['<TIME>'], format='%Y.%m.%d %H:%M:%S')
+        self.data['ts'] = self.data['ts'].map(lambda x: x - datetime.timedelta(hours = 7)) # NY time
+        
         self.data = self.data.drop(['<DATE>', '<TIME>', '<VOL>', '<SPREAD>' ], axis=1)
         
         self.data = self.data.rename({"<CLOSE>": "close",
@@ -50,20 +52,20 @@ class Market():
                                     "<LOW>": "low"
            }, axis = 1)
         
-        self.data = self.data[['<DATETIME>'] + [col for col in self.data.columns if col != '<DATETIME>']]
+        self.data = self.data[['ts'] + [col for col in self.data.columns if col != 'ts']]
         
         self.data['SMA'] = self.data['high'].rolling(window=ma).mean()
         self.data['EMA'] = self.data['high'].ewm(span=ema, adjust=False).mean()
         
         self.chart : list[Candle] = []
         self.n_candles = self.data.shape[0]
-        self.start_date = min(self.data["<DATETIME>"])
-        self.end_date = max(self.data["<DATETIME>"])
+        self.start_date = min(self.data["ts"])
+        self.end_date = max(self.data["ts"])
         self.tf = ...
         
         for k in range(self.n_candles):
             c = self.data.loc[k]
-            candle = Candle(c["<DATETIME>"], self.tf, c["high"], c["low"], c["open"], c["close"])
+            candle = Candle(c["ts"], self.tf, c["high"], c["low"], c["open"], c["close"])
             self.chart.append(candle)
             
         self.uptrends =   ma*[np.nan] + [ sum([ int(self.chart[i].isBullish()) for i in range(k-ma, k) ]) > int(ma*0.75) for k in range(ma, self.n_candles) ]
@@ -174,32 +176,16 @@ class Market():
                 mss["bull"].append((self.chart[k].timestamp if return_times else k))
                 
         return(mss)
-
-    
-    def runBacktest(self, histDays=10):
-        highs = []
-        lows = []
-        day = self.chart[0].timestamp.date()
-        for k in range(histDays):
-            df = self.data[self.data["<TIMESTAMP>"] == day]
-            highs.append(max(df["close"]))
-            lows.append(min(df["close"]))
-            
-            if day.weekday() == 4: # Friday
-                day += datetime.timedelta(days = 3)
-            else:
-                day += datetime.timedelta(days = 1)
-                
     
     def plotLine(self, start = None, end = None):
         
         start = start if start else self.start_date
         end = end if end else self.end_date
         
-        df = self.data[ (self.data["<DATETIME>"] > start) & (self.data["<DATETIME>"] < end) ]
+        df = self.data[ (self.data["ts"] > start) & (self.data["ts"] < end) ]
         n = df.shape[0]
 
-        fig = ly.Figure(data=ly.Scatter(x=df['<DATETIME>'],
+        fig = ly.Figure(data=ly.Scatter(x=df['ts'],
                             y=df['high'])
                         )
     
@@ -210,10 +196,10 @@ class Market():
         start = start if start else self.start_date
         end = end if end else self.end_date
         
-        df = self.data[ (self.data["<DATETIME>"] >= start) & (self.data["<DATETIME>"] <= end) ]
+        df = self.data[ (self.data["ts"] >= start) & (self.data["ts"] <= end) ]
         n = df.shape[0]
 
-        fig = ly.Figure(data=ly.Candlestick(x=df['<DATETIME>'],
+        fig = ly.Figure(data=ly.Candlestick(x=df['ts'],
                             open=df['open'],
                             high=df['high'],
                             low=df['low'],
@@ -226,7 +212,7 @@ class Market():
         if trends:
             for i in df.index:
                 if self.data["Uptrend"][i]:
-                    fig.add_scatter(x=[df['<DATETIME>'][i]],
+                    fig.add_scatter(x=[df['ts'][i]],
                                     y=[mini],
                                     opacity=1,
                                     fillcolor="green",
@@ -234,7 +220,7 @@ class Market():
                                     showlegend=False)
                     
                 if self.data["Downtrend"][i]:
-                    fig.add_scatter(x=[df['<DATETIME>'][i]],
+                    fig.add_scatter(x=[df['ts'][i]],
                                     y=[mini],
                                     opacity=1,
                                     fillcolor="red",
@@ -245,7 +231,7 @@ class Market():
         if trends:
             for t in self.trends["bull"] + self.trends["bear"]:
                 if t[0] in df.index and t[1] in df.index:
-                    fig.add_scatter(x=[df['<DATETIME>'][t[0]], df['<DATETIME>'][t[1]]],
+                    fig.add_scatter(x=[df['ts'][t[0]], df['ts'][t[1]]],
                                     y=[df['open'][t[0]], df['close'][t[1]]],
                                     opacity=0.7,
                                     showlegend=False)
@@ -256,7 +242,7 @@ class Market():
                 if k in df.index:
                     limit1 = min(k+20, df.index[-1])
                     limit2 = min(k+1, df.index[-1])
-                    fig.add_scatter(x=[df['<DATETIME>'][k-1], df['<DATETIME>'][k-1], df['<DATETIME>'][limit1], df['<DATETIME>'][limit1], df['<DATETIME>'][k-1]], 
+                    fig.add_scatter(x=[df['ts'][k-1], df['ts'][k-1], df['ts'][limit1], df['ts'][limit1], df['ts'][k-1]], 
                                     y=[df['high'][k-1], df['low'][limit2], df['low'][limit2], df['high'][k-1], df['high'][k-1]],
                                     fill="toself",
                                     fillcolor="green",
@@ -270,7 +256,7 @@ class Market():
                 if k in df.index:
                     limit1 = min(k+20, df.index[-1])
                     limit2 = min(k+1, df.index[-1])
-                    fig.add_scatter(x=[df['<DATETIME>'][k-1], df['<DATETIME>'][k-1], df['<DATETIME>'][limit1], df['<DATETIME>'][limit1], df['<DATETIME>'][k-1]], 
+                    fig.add_scatter(x=[df['ts'][k-1], df['ts'][k-1], df['ts'][limit1], df['ts'][limit1], df['ts'][k-1]], 
                                     y=[df['low'][k-1], df['high'][limit2], df['high'][limit2], df['low'][k-1], df['low'][k-1]],
                                     fill="toself",
                                     fillcolor="red",
@@ -282,12 +268,3 @@ class Market():
         # fig.update_layout(yaxis=dict(range=[y_min, y_max])) ...
         
         fig.show()
-    
-
-if __name__ == "__main__":
-    m = Market("CandleMagic\\data\\EURUSD_M1_231201_231215.csv")
-    
-    # m.plotLine(start=datetime(2023, 12, 1, 1, 0, 0), end=datetime(2023, 12, 10, 0, 0, 0))
-    m.plot(start=datetime.datetime(2023, 12, 5, 5, 0, 0), end=datetime.datetime(2023, 12, 6, 8, 0, 0), bFVG = False, trends=True)
-    
-# check https://huggingface.co/dslim/bert-base-NER
