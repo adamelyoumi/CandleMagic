@@ -25,7 +25,7 @@ We may work with 1M data only, as higher timeframes can be reconstructed easily,
 |LIQ_LTH_X | Took long-term high (sell-side liquidity) (previous high/TBL)| Boolean |
 |BFVG_VLTN | Price closed below a Bullish FVG| Boolean |
 |BTREND_D | Daily bullish trend (past 3 days closed above open)| Boolean |
-|TRCSLD_P30M | A tight-range consolidation happened within the past 30 Minutes| Boolean |
+|TRC_P30M | A tight-range consolidation happened within the past 30 Minutes| Boolean |
 |DAYOP_ABV | Price traded above the day opening (00:00 AM)| Boolean |
 |SESOP_ABV | Price traded above the NY session opening (7:30 AM)| Boolean |
 |Target variable|0 = No significant move, 1 = Bullish move, 2 = Bearish move| Boolean |
