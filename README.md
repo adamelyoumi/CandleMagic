@@ -2,7 +2,7 @@
 
 ## Overview
 
-We want to prove/disprove ICT concepts using Machine Learning
+We want to prove/disprove ICT concepts using Machine Learning 
 
 ## Part 1 - Dataset construction
 
