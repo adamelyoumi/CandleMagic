@@ -37,25 +37,28 @@ class Market():
         self.ma = ma
         self.ema = ema
         
-        self.pair = file.split("\\")[-1].split("/")[-1].split("_")[0]
-        
-        self.data = pd.read_csv(file, sep="\t")
-        
-        self.data['ts'] = pd.to_datetime(self.data['<DATE>'] + ' ' + self.data['<TIME>'], format='%Y.%m.%d %H:%M:%S')
-        self.data['ts'] = self.data['ts'].map(lambda x: x - datetime.timedelta(hours = 7)) # NY time
-        
-        self.data = self.data.drop(['<DATE>', '<TIME>', '<VOL>', '<SPREAD>' ], axis=1)
-        
-        self.data = self.data.rename({"<CLOSE>": "close",
-                                    "<OPEN>": "open",
-                                    "<HIGH>": "high",
-                                    "<LOW>": "low"
-           }, axis = 1)
-        
-        self.data = self.data[['ts'] + [col for col in self.data.columns if col != 'ts']]
-        
-        self.data['SMA'] = self.data['high'].rolling(window=ma).mean()
-        self.data['EMA'] = self.data['high'].ewm(span=ema, adjust=False).mean()
+        if isinstance(data, str):
+            self.data = pd.read_csv(data, sep="\t")
+            self.pair = data.split("\\")[-1].split("/")[-1].split("_")[0]
+            self.data['ts'] = pd.to_datetime(self.data['<DATE>'] + ' ' + self.data['<TIME>'], format='%Y.%m.%d %H:%M:%S')
+            self.data['ts'] = self.data['ts'].map(lambda x: x - datetime.timedelta(hours = 7)) # NY time
+            
+            self.data = self.data.drop(['<DATE>', '<TIME>', '<VOL>', '<SPREAD>' ], axis=1)
+            
+            self.data = self.data.rename({"<CLOSE>": "close",
+                                        "<OPEN>": "open",
+                                        "<HIGH>": "high",
+                                        "<LOW>": "low"
+                                            }, axis = 1)
+            
+            self.data = self.data[['ts'] + [col for col in self.data.columns if col != 'ts']]
+            
+            self.data['SMA'] = self.data['high'].rolling(window=ma).mean()
+            self.data['EMA'] = self.data['high'].ewm(span=ema, adjust=False).mean()
+            
+        else: # The input has already been formatted
+            self.data = data
+            self.pair = pair
         
         self.chart : list[Candle] = []
         self.n_candles = self.data.shape[0]
