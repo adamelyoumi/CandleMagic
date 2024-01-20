@@ -4,6 +4,7 @@ import plotly.graph_objects as ly
 import matplotlib.pyplot as plt
 import numpy as np
 import bisect
+from typing import *
 
 class Candle():
     def __init__(self, t, tf, h, l, o, c) -> None:
@@ -24,13 +25,7 @@ class Candle():
         return(abs(self.open-self.close))
         
 class Market():
-    def __init__(self, file, ma=10, ema=10, pair = "", mode = "") -> None:
-        
-        """
-            Give the history over many days, will be used to define liquidity levels
-            mode: if set to "backtest", will apply ICT to the days starting 14 days after the first day of the file provided
-            
-        """
+    def __init__(self, data: Union[str, pd.DataFrame], ma=10, ema=10, pair = "", mode = "") -> None:
         
         self.mode = mode
         
@@ -84,18 +79,50 @@ class Market():
                 self.swi["high"].append(k)
             if self.chart[k].low < self.chart[k-1].low and self.chart[k].low < self.chart[k+1].low:
                 self.swi["low"].append(k)
-            
-        self.fvg = {"bull":[], "bear": []}
+        
+        
+        ##### FVGs and price legs #####
+        
+        self.fvg = {"bull": [], 
+                    "bear": []}
+        
+        self.price_legs = {"bull": {}, 
+                           "bear": {}}
         
         for k in range(1,self.n_candles-1):
             if self.chart[k-1].high < self.chart[k+1].low:
                 self.fvg["bull"].append(k)
                 
+                leg_low = self.chart[k-1].low
+                leg_low_body = min(self.chart[k-1].close, self.chart[k-1].open)
+                for c in range(k+1, len(self.chart)):   # Looking at next candles until we find a bearish one, ending the bullish move
+                    if self.chart[c].isBearish():       # End of price move
+                        leg_high = max(self.chart[c-1].high, self.chart[c].high)
+                        leg_high_body = self.chart[c-1].close
+                        break
+                self.price_legs["bull"][k] = [[k, c], [leg_low, leg_high], [leg_low_body, leg_high_body]]
+                
+                if len(self.price_legs["bull"]) > 1 and self.price_legs["bull"][k][0][1] == self.price_legs["bull"][self.fvg["bull"][-2]][0][1]: # The FVG is part of the price leg of the previous FVG 
+                    self.price_legs["bull"][k] == self.price_legs["bull"][self.fvg["bull"][-2]]                                                  # because their price legs end at the same candle
+                
+                # This adjustment propagates from FVG to FVG within the same price leg
+                
             if self.chart[k-1].low > self.chart[k+1].high:
                 self.fvg["bear"].append(k)
                 
-        # self.trends = {"bull":[], "bear": []}
-        
+                leg_high = self.chart[k-1].high
+                leg_high_body = max(self.chart[k-1].close, self.chart[k-1].open)
+                for c in range(k+1, len(self.chart)):
+                    if self.chart[c].isBullish():
+                        leg_low = min(self.chart[c-1].low, self.chart[c].low)
+                        leg_low_body = self.chart[c-1].close
+                        break
+                    
+                self.price_legs["bear"][k] = [[k, c], [leg_high, leg_low], [leg_high_body, leg_low_body]]
+                
+                if len(self.price_legs["bear"]) > 1 and self.price_legs["bear"][k][0][1] == self.price_legs["bear"][self.fvg["bear"][-2]][0][1]:
+                    self.price_legs["bear"][k] == self.price_legs["bear"][self.fvg["bear"][-2]]
+                    
         
         self.OBs = {"bull":[], "bear": []}
         
