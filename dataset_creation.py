@@ -38,8 +38,8 @@ COLS = ["DAY",
         "LIQ_LTH", # OK
         "LIQ_LTL", # OK
         
-        "BFVG_VLTN",
-        "bFVG_VLTN",
+        "BFVG_VLTN_D",
+        "bFVG_VLTN_P",
         
         "BTREND_D",
         "bTREND_D",
@@ -130,11 +130,67 @@ if __name__ == "__main__":
         lows_temp = updateMins(dailyLows, l)
         LIQ_LTL = 1 if len(lows_temp) != len(dailyLows)+1 else 0
         dailyLows = lows_temp
+        
+        # FVG Violation
+        BFVG_VLTN = 0
+        BFVG_VLTN_D = 0
+        bFVG_VLTN = 0
+        bFVG_VLTN_P = 0
+    
+        BFVG_RET = 0
+        BFVG_RET_D = 0
+        bFVG_RET = 0
+        bFVG_RET_P = 0
+        
+        mkt_day = Market(df)
+        
+        for fvg in mkt_day.fvg["bull"]:
+            lim_low  = mkt_day.chart[fvg-1].high
+            lim_high = mkt_day.chart[fvg+1].low
             
+            pl = mkt_day.price_legs["bull"][fvg] # [[idx_start, idx_end], [low, high], [low_body, high_body]]
             
-    
-    
-    
-    
+            equil = (pl[1][0] + pl[1][1])/2
+            # equil_body = (pl[2][0] + pl[2][1])/2
+            
+            for c in range(fvg+1, len(mkt_day.chart)):
+                if c.low < lim_high:
+                    BFVG_RET += 1
+                    
+                if c.low < equil:
+                    BFVG_RET_D += 1
+                    
+                if c.close < lim_low - 1*PIP: # 1 pip tolerance
+                    BFVG_VLTN += 1
+                    
+                if c.close < (lim_low - 1*PIP) and lim_low < equil: # 1 pip tolerance
+                    BFVG_VLTN_D += 1
+        
+        
+        for fvg in mkt_day.fvg["bear"]:
+            lim_high = mkt_day.chart[fvg-1].low
+            lim_low  = mkt_day.chart[fvg+1].high
+            
+            pl = mkt_day.price_legs["bear"][fvg] # [[idx_start, idx_end], [low, high], [low_body, high_body]]
+            
+            equil = (pl[1][0] + pl[1][1])/2
+            
+            for c in range(fvg+1, len(mkt_day.chart)):
+                if c.high > lim_low:
+                    bFVG_RET += 1
+                    
+                if c.high > equil:
+                    bFVG_RET_P += 1
+                    
+                if c.close > lim_high + 1*PIP: # 1 pip tolerance
+                    bFVG_VLTN += 1
+                    
+                if c.close > (lim_high + 1*PIP) and lim_high > equil: # 1 pip tolerance
+                    bFVG_VLTN_P += 1
+        
+        
+        
+        
+        
     # m.plot(start=datetime.datetime(2023, 12, 5, 5, 0, 0), end=datetime.datetime(2023, 12, 6, 8, 0, 0), bFVG = False, trends=True)
 
