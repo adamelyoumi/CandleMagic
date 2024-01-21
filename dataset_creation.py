@@ -53,7 +53,6 @@ COLS = ["DAY",
         ] 
 
 def updateMaxes(lst: list, m):
-    
     for _ in range(len(lst)):
         if lst[-1] < m:
             lst.pop(-1)
@@ -75,6 +74,22 @@ def updateMins(lst: list, m):
         lst = [m]
     return(lst)
 
+def constructHigherTFChart(mkt: Market, M: int):
+    """
+    Args:
+        data (Market): 1M timeframe Market instance
+        M (int): Target Time Frame ("M=5" means "Construct the 5M chart")
+    """
+    
+    df = []
+    for k in range((mkt.data.shape[0]//M) - 1):
+        d = mkt.data.iloc[M*k:M*(k+1)]
+        d = d.reset_index()
+        
+        df.append([d["ts"][0], d["open"][0], d["high"].max(), d["low"].min(), d["close"][M-1]])
+        
+    return Market(pd.DataFrame(df, columns = ["ts", "open", "high", "low", "close"]))
+    
 if __name__ == "__main__":
     
     parser = argparse.ArgumentParser()
