@@ -5,6 +5,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import bisect
 from typing import *
+import os
+import shutil
+
+DAY_NAMES={0: "Monday",
+           1: "Tuesday",
+           2: "Wednesday",
+           3: "Thursday",
+           4: "Friday"}
 
 class Candle():
     def __init__(self, t, tf, h, l, o, c) -> None:
@@ -38,7 +46,7 @@ class Market():
             self.data['ts'] = pd.to_datetime(self.data['<DATE>'] + ' ' + self.data['<TIME>'], format='%Y.%m.%d %H:%M:%S')
             self.data['ts'] = self.data['ts'].map(lambda x: x - datetime.timedelta(hours = 7)) # NY time
             
-            self.data = self.data.drop(['<DATE>', '<TIME>', '<VOL>', '<SPREAD>' ], axis=1)
+            self.data = self.data.drop([ '<DATE>', '<TIME>', '<VOL>', '<SPREAD>' ], axis=1)
             
             self.data = self.data.rename({"<CLOSE>": "close",
                                         "<OPEN>": "open",
@@ -221,6 +229,65 @@ class Market():
     
         fig.show()
     
+    def plot_NYsessions(self, start = None, end = None):
+        days = list(self.data["ts"].map(lambda x: str(x)[:10]).unique())
+        dirname = f"imgs_{datetime.datetime.now().__format__('%Y%m%d_%H')}"
+        try:
+            shutil.rmtree(dirname)
+        except FileNotFoundError:
+            pass
+        os.mkdir(dirname)
+        
+        for day in days:
+            day_L = day.split("-")
+            startNY, endNY = datetime.datetime(int(day_L[0]), int(day_L[1]), int(day_L[2]), 7, 30, 0), datetime.datetime(int(day_L[0]), int(day_L[1]), int(day_L[2]), 12, 0, 0)
+            if startNY < start or startNY.weekday() > 4:
+                continue
+            
+            if endNY > end:
+                break
+            
+            df = self.data[ (self.data["ts"] >= startNY) & (self.data["ts"] <= endNY) ]
+            fig = ly.Figure(data=ly.Candlestick(x=df['ts'],
+                                                open=df['open'],
+                                                high=df['high'],
+                                                low=df['low'],
+                                                close=df['close']),
+                        )
+            
+            fig.write_image(f"{dirname}/{self.pair}_{day.replace('-', '')}_NY.png")
+        
+        fig = ly.Figure()
+        
+        cnt = 0
+        for pic in os.listdir(dirname):
+            fig.add_layout_image(
+                source=f"{dirname}/{pic}",
+                x=cnt%5,
+                y=cnt//5,
+                xanchor="center",
+                yanchor="middle",
+            )
+            
+            cnt += 1
+
+        # Update layout settings
+        # fig.update_layout(
+        #     images=[
+        #         dict(
+        #             source="path/to/image3.png",
+        #             x=0.5,
+        #             y=0.5,
+        #             xanchor="center",
+        #             yanchor="middle",
+        #         )
+        #     ]
+        # )
+
+        # Show the figure
+        fig.show()
+        
+
     def plot(self, start = None, end = None, BFVG = False, bFVG = False, MSS = False, EMA = False, trends = False):
         
         start = start if start else self.start_date
@@ -230,10 +297,10 @@ class Market():
         n = df.shape[0]
 
         fig = ly.Figure(data=ly.Candlestick(x=df['ts'],
-                            open=df['open'],
-                            high=df['high'],
-                            low=df['low'],
-                            close=df['close']),
+                                            open=df['open'],
+                                            high=df['high'],
+                                            low=df['low'],
+                                            close=df['close']),
                         )
         
         mini = min(df["low"])
@@ -298,3 +365,8 @@ class Market():
         # fig.update_layout(yaxis=dict(range=[y_min, y_max])) ...
         
         fig.show()
+
+if __name__ == "__main__":
+    os.chdir("CandleMagic")
+    m = Market("data/EURUSD_M1_231201_231215.csv")
+    m.plot_NYsessions(start=datetime.datetime(2023, 12, 2, 0, 0, 0), end=datetime.datetime(2023, 12, 15, 23, 59, 59))
