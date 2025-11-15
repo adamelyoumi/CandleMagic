@@ -10,16 +10,18 @@ import argparse
 # c:/Users/adame/OneDrive/Bureau/CODE/.venv/Scripts/python.exe c:/Users/adame/OneDrive/Bureau/CODE/CandleMagic/dataset_creation.py -f .\CandleMagic\data\EURUSD_M1_231201_231215.csv
 
 """
-    Name	Description
-    DAY     Day of week
-RET_BFVG	Price retraced into a Bullish FVG
-RET_BFVG_D	Price retraced into a Bullish FVG in a Discount
-LIQ_LTH_X	Took long-term high (sell-side liquidity) (previous high/TBL)
-BFVG_VLTN	Price closed below (violated) a Bullish FVG
-BTREND_D	Daily bullish trend (past 3 days closed above open)
-TRCSLD_P30M	A tight-range consolidation happened within the past 30 Minutes
-DAYOP_ABV	Number of 1M candles closing above the day opening (00:00 AM)
-SESOP_ABV	Number of 1M candles closing above the NY session opening (7:30 AM)
+Name	        Description
+DAY             Day of week
+RET_BFVG	    Price retraced into a Bullish FVG
+RET_BFVG_D	    Price retraced into a Bullish FVG in a Discount
+LIQ_LTH_X	    Took long-term high (sell-side liquidity) (previous high/TBL)
+PDH_LTH_X	    Took previous day's high (sell-side liquidity) (previous high/TBL)
+PWH_LTH_X	    Took previous weeks's high (sell-side liquidity) (previous high/TBL)
+BFVG_VLTN	    Price closed below (violated) a Bullish FVG
+BTREND_D	    Daily bullish trend (past 3 days closed above open)
+TRCSLD_P30M	    A tight-range consolidation happened within the past 30 Minutes
+DAYOP_ABV	    Number of 1M candles closing above the day opening (00:00 AM)
+SESOP_ABV	    Number of 1M candles closing above the NY session opening (7:30 AM)
 
 Target variable : 0 = No significant move, 1 = Bullish move, 2 = Bearish move
 """

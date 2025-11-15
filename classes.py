@@ -8,11 +8,11 @@ from typing import *
 import os
 import shutil
 
-DAY_NAMES={0: "Monday",
-           1: "Tuesday",
-           2: "Wednesday",
-           3: "Thursday",
-           4: "Friday"}
+DAY_NAMES={1: "Monday",
+           2: "Tuesday",
+           3: "Wednesday",
+           4: "Thursday",
+           5: "Friday"}
 
 class Candle():
     def __init__(self, t, tf, h, l, o, c) -> None:
@@ -22,7 +22,10 @@ class Candle():
         self.low = l
         self.open = o
         self.close = c
-            
+        
+        self.weekofyear = self.timestamp.isocalendar()[1]
+        self.dayofweek = self.timestamp.isocalendar()[2]
+        
     def isBullish(self):
         return(self.open > self.close)
     
@@ -87,7 +90,10 @@ class Market():
                 self.swi["high"].append(k)
             if self.chart[k].low < self.chart[k-1].low and self.chart[k].low < self.chart[k+1].low:
                 self.swi["low"].append(k)
+                
+        # self.populate()
         
+    def populate(self):
         
         ##### FVGs and price legs #####
         
